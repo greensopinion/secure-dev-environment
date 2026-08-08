@@ -1,0 +1,17 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      # Bind mount: project source from Mac
+      # When used from another repo, this path is overridden by VS Code
+      - ..:/workspace:cached
+      # Named volume: node_modules stays off Mac filesystem
+      - node_modules:/workspace/node_modules
+    # SECURITY: No additional mounts, no Docker socket, no SSH agent
+    # The container cannot access the host filesystem beyond /workspace
+    command: sleep infinity
+
+volumes:
+  node_modules:

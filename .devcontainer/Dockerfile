@@ -1,0 +1,47 @@
+# Secure Node.js Development Container
+# Purpose: Isolate Node.js/npm execution from Mac credentials
+# See: docs/runbooks/initial-setup.md for usage
+
+FROM node:24-bookworm
+
+# Pin terraform-ls version for reproducibility
+ARG TERRAFORM_LS_VERSION=0.38.7
+
+# Install essential tools (no terraform CLI, no cloud CLIs)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    ca-certificates \
+    build-essential \
+    python3 \
+    unzip \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install terraform-ls (language server only — no terraform binary)
+RUN ARCH=$(dpkg --print-architecture) && \
+    curl -fsSL "https://releases.hashicorp.com/terraform-ls/${TERRAFORM_LS_VERSION}/terraform-ls_${TERRAFORM_LS_VERSION}_linux_${ARCH}.zip" \
+    -o /tmp/terraform-ls.zip && \
+    unzip /tmp/terraform-ls.zip -d /usr/local/bin && \
+    rm /tmp/terraform-ls.zip && \
+    chmod +x /usr/local/bin/terraform-ls
+
+# Upgrade npm to v12 for allowScripts support
+RUN npm install -g npm@12
+
+# Use the existing 'node' user (UID 1000) that comes with the node base image
+USER node
+WORKDIR /home/node
+
+# Configure git: disable credential helper, disable interactive prompts
+RUN git config --global credential.helper "" && \
+    git config --global core.askPass "" && \
+    git config --global init.defaultBranch main
+
+# Configure npm supply-chain protections at image level
+# These apply to ALL projects opened in this container
+RUN echo "ignore-scripts=true" > ~/.npmrc && \
+    echo "min-release-age=21" >> ~/.npmrc && \
+    echo "audit=true" >> ~/.npmrc
+
+WORKDIR /workspace
