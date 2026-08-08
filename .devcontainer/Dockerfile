@@ -29,7 +29,12 @@ RUN ARCH=$(dpkg --print-architecture) && \
 # Upgrade npm to v12 for allowScripts support
 RUN npm install -g npm@12
 
-# Use the existing 'node' user (UID 1000) that comes with the node base image
+# Pre-create workspace and node_modules with correct ownership (as root)
+# When a Docker volume is mounted on node_modules, if the volume is empty,
+# Docker copies the directory's ownership from the image to the volume.
+RUN mkdir -p /workspace/node_modules && chown -R node:node /workspace
+
+# Switch to non-root user
 USER node
 WORKDIR /home/node
 
