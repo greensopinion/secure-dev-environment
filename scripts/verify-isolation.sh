@@ -106,6 +106,52 @@ else
   check "Git credential helper is disabled" "fail" "credential.helper=$GIT_CRED_HELPER"
 fi
 
+# 10. .git directory is read-only (cannot plant hooks or modify config)
+if [ -d /workspace/.git ]; then
+  if touch /workspace/.git/ISOLATION_TEST 2>/dev/null; then
+    rm -f /workspace/.git/ISOLATION_TEST 2>/dev/null
+    check ".git is read-only" "fail" "Was able to create a file in .git/"
+  else
+    check ".git is read-only" "pass"
+  fi
+
+  if echo "test" > /workspace/.git/hooks/pre-push 2>/dev/null; then
+    rm -f /workspace/.git/hooks/pre-push 2>/dev/null
+    check ".git/hooks is read-only" "fail" "Was able to write .git/hooks/pre-push"
+  else
+    check ".git/hooks is read-only" "pass"
+  fi
+
+  if git config --local test.security-boundary "compromised" 2>/dev/null; then
+    check ".git/config is read-only" "fail" "Was able to write to .git/config"
+  else
+    check ".git/config is read-only" "pass"
+  fi
+else
+  check ".git read-only (no .git directory found — skipped)" "pass"
+fi
+
+# 11. .devcontainer is read-only (cannot modify future container config)
+if [ -d /workspace/.devcontainer ]; then
+  if touch /workspace/.devcontainer/ISOLATION_TEST 2>/dev/null; then
+    rm -f /workspace/.devcontainer/ISOLATION_TEST 2>/dev/null
+    check ".devcontainer is read-only" "fail" "Was able to create a file in .devcontainer/"
+  else
+    check ".devcontainer is read-only" "pass"
+  fi
+else
+  check ".devcontainer read-only (no .devcontainer directory found — skipped)" "pass"
+fi
+
+# 12. Verify read-only git commands still work
+if [ -d /workspace/.git ]; then
+  if git -C /workspace status --porcelain >/dev/null 2>&1; then
+    check "git status works (read-only access is functional)" "pass"
+  else
+    check "git status works" "fail" "Read-only git commands are broken"
+  fi
+fi
+
 # Summary
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="

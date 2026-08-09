@@ -84,6 +84,14 @@ else
   check "No Node.js on Mac (good — it runs in the container)" "pass"
 fi
 
+# Git hooks should point to a safe directory
+GIT_HOOKS_PATH=$(git config --global core.hooksPath 2>/dev/null || echo "")
+if [ -n "$GIT_HOOKS_PATH" ] && [ "$GIT_HOOKS_PATH" != ".git/hooks" ]; then
+  check "Git hooks redirected to safe location ($GIT_HOOKS_PATH)" "pass"
+else
+  check "Git hooks not redirected (container can write malicious hooks)" "warn" "Run: mkdir -p ~/.git-hooks && git config --global core.hooksPath ~/.git-hooks"
+fi
+
 # Summary
 echo ""
 echo "=== Results: $PASS passed, $WARN warnings, $FAIL failed ==="

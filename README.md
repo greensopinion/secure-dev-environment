@@ -37,7 +37,7 @@ The Mac runs VS Code and holds credentials. The container runs Node.js and holds
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-Git push and pull run on the Mac where SSH keys live. Git add, commit, stash, and diff run inside the container where no credentials are needed. Both sides see the same files through a bind mount, so commits made in the container appear in `git log` on the Mac instantly.
+Git push and pull run on the Mac where SSH keys live. Git add, commit, and other metadata-modifying operations also run on the Mac because `.git` is mounted read-only inside the container. Read-only Git commands like status, diff, and log work inside the container. Both sides see the same working tree through a bind mount.
 
 ## Security Model
 
@@ -51,15 +51,28 @@ The core principle: the machine that executes untrusted third-party JavaScript m
 | GCP credentials | Mac `~/.config/gcloud/` | None — not mounted |
 | Terraform state | Mac project dir | Not mounted separately |
 | Git push capability | Mac SSH agent | Explicitly blocked via `SSH_AUTH_SOCK=""` |
+| Git metadata (.git/) | In workspace | Read-only — cannot modify hooks, config, or refs |
+| Container config (.devcontainer/) | In workspace | Read-only — cannot weaken future security |
 | Docker daemon | Mac Docker socket | Not mounted |
+| Git hooks execution | Mac `~/.git-hooks/` | Defense-in-depth alongside read-only .git |
 
 ### What a Compromised Container Can Access
 
 | Resource | Notes |
 |----------|-------|
 | Source code | Read/write via bind mount. Necessary for development. Review `git diff` before pushing. |
-| Outbound HTTPS | Required for npm registry. Enables source exfiltration — accepted risk. |
+| Outbound network | Unrestricted TCP/UDP to the public internet. Required for npm registry. Enables exfiltration of source code to arbitrary servers. |
+| DNS | Can resolve arbitrary domains. |
 | node_modules | In a disposable Docker volume. Destroy and recreate at any time. |
+
+### What a Compromised Container Cannot Reach
+
+| Resource | Mitigation |
+|----------|-----------|
+| Mac services via host.docker.internal | Overridden to 127.0.0.1 (points to container itself) |
+| Cloud metadata (169.254.169.254) | Blocked by Docker Desktop |
+| Host filesystem beyond /workspace | Not mounted |
+| LAN / private network | Docker bridge is isolated from Mac's LAN |
 
 ### npm-Level Hardening
 
@@ -71,7 +84,18 @@ The container image sets three npm defaults that protect every project opened in
 
 ### Accepted Risks
 
-Source code is readable by a compromised process. This is unavoidable — you need the code to develop. Outbound network access allows exfiltration of that source; egress filtering is a future enhancement. The tradeoff: a compromised dependency can steal your code but cannot steal credentials that unlock other systems, push malicious commits, or access cloud infrastructure.
+- **Source code exfiltration**: A compromised process can read all source code and send it anywhere over the network. Review `git diff` on the Mac before committing to detect modifications.
+- **Unrestricted outbound network**: The container can make arbitrary TCP/UDP connections to the internet. Egress filtering (e.g., an allowlist proxy) would reduce this but is not implemented. This is a deliberate tradeoff — npm, curl, and other tools need general internet access.
+- **DNS exfiltration**: Data can be exfiltrated via DNS queries. Mitigating this would require a restricted DNS resolver.
+- **Working tree modification**: Container code can modify source files, Makefiles, scripts, and other working-tree content. The `.git` and `.devcontainer` directories are read-only, but other files the host may later execute (e.g., Terraform config, shell scripts) are writable. Review changes before running host-side tools against the working tree.
+
+### Container Hardening
+
+The container runs with reduced privileges:
+- `no-new-privileges` — prevents privilege escalation via setuid binaries
+- `cap_drop: ALL` with only CHOWN, SETUID, SETGID, DAC_OVERRIDE retained (minimum for Node.js development)
+- `host.docker.internal` overridden to 127.0.0.1 — blocks access to Mac services
+- Non-root user (`node`, UID 1000)
 
 ## Quick Start
 

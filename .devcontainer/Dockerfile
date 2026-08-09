@@ -45,8 +45,11 @@ RUN git config --global credential.helper "" && \
 
 # Configure npm supply-chain protections at image level
 # These apply to ALL projects opened in this container
-RUN echo "ignore-scripts=true" > ~/.npmrc && \
-    echo "min-release-age=21" >> ~/.npmrc && \
-    echo "audit=true" >> ~/.npmrc
+#
+#
+# strict-npmrc=true prevents project-local .npmrc from overriding these settings.
+RUN echo "min-release-age=21" > ~/.npmrc && \
+    echo "audit=true" >> ~/.npmrc && \
+    echo "strict-npmrc=true" >> ~/.npmrc
 
 WORKDIR /workspace

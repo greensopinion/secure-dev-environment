@@ -32,32 +32,33 @@ npm run <script>
 
 ## Git Operations
 
-### Inside the container (no credentials needed):
+### Inside the container (read-only git — no credentials needed):
 
 ```bash
 git status
 git diff
+git log --oneline
+git branch
+git show
+```
+
+### On the Mac terminal (all git mutations + remote operations):
+
+```bash
 git add .
 git add -p
 git reset HEAD <file>
 git commit -m "feat: add new feature"
 git stash
 git stash pop
-git log --oneline
-git branch
 git checkout -b feature/new-thing
-```
-
-### On the Mac terminal (requires SSH keys):
-
-```bash
 git pull
 git push
 git fetch
 git clone git@github.com:<org>/<repo>.git
 ```
 
-**Rule**: If the git command talks to a remote, run it on Mac. If it's local-only, either side works.
+**Rule**: If the git command modifies `.git/` (commits, staging, stashing, branching) or talks to a remote, run it on Mac. If it only reads (status, diff, log, show), either side works.
 
 ## Editing
 
@@ -80,9 +81,10 @@ The Jest extension in VS Code also works for inline test running.
 ## Committing Work
 
 1. Make your changes (container terminal or VS Code editor)
-2. Stage: `git add .` (either terminal)
-3. Commit: `git commit -m "message"` (either terminal)
-4. Push: `git push` (**Mac terminal only**)
+2. Switch to Mac terminal
+3. Stage: `git add .`
+4. Commit: `git commit -m "message"`
+5. Push: `git push`
 
 ## End of Day
 
@@ -93,7 +95,7 @@ No special shutdown needed. The container keeps running. You can:
 
 ## Tips
 
-- **Commit before pushing**: Since push is on Mac, make sure you've committed in the container first
-- **Use VS Code's split terminal**: One pane for container commands, one for Mac (if needed)
+- **All git mutations on Mac**: Since `.git` is read-only in the container, stage/commit/push all from Mac terminal
+- **Use VS Code's split terminal**: One pane for container commands (npm, tests), one for Mac (git, terraform)
 - **npm install after pull**: If `package.json` changed, run `npm install` in the container
 - **Container feels slow?**: Check Docker Desktop resource allocation (Settings → Resources)
