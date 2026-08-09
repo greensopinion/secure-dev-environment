@@ -1,8 +1,16 @@
 # Secure Development Environment
 
-Isolate Node.js/npm execution from developer credentials using Docker Dev Containers.
+npm supply-chain attacks compromise developer workstations by executing malicious code during `npm install`. The pattern is consistent: a dependency runs a postinstall script that harvests credentials from the local filesystem and exfiltrates them. Recent examples:
 
-## Architecture
+- [ChainDrop worm](https://www.microsoft.com/en-us/security/blog/2026/08/04/chaindrop-supply-chain-compromise-anatomy-self-propagating-worm/) (August 2026) — a self-propagating worm infected 400+ packages including `keyv` and `flat-cache`, affecting packages with 2 billion monthly downloads. Microsoft advised rotating credentials for any developer workstation that ran `npm install` on an affected version.
+- [Axios compromise](https://www.microsoft.com/en-us/security/blog/2026/04/01/mitigating-the-axios-npm-supply-chain-compromise/) (March 2026) — attackers hijacked a maintainer's npm account and published backdoored versions that installed a cross-platform RAT. The malicious versions were live for 3 hours before detection.
+- [Red Hat npm scope poisoning](https://www.microsoft.com/en-us/security/blog/2026/06/02/preinstall-persistence-inside-red-hat-npm-miasma-credential-stealing-campaign/) (June 2026) — 32 packages under `@redhat-cloud-services` were modified to steal credentials from developer workstations and CI/CD runners.
+
+This repository provides a Docker-based development environment that isolates Node.js execution from developer credentials. If a dependency is compromised, it can read source code and reach the internet — but it cannot access SSH keys, GCP credentials, Terraform state, or the Docker daemon. The container is disposable. Destroy it, rebuild from the config, and continue working.
+
+## How It Works
+
+The Mac runs VS Code and holds credentials. The container runs Node.js and holds nothing of value beyond source code.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -29,51 +37,51 @@ Isolate Node.js/npm execution from developer credentials using Docker Dev Contai
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
+Git push and pull run on the Mac where SSH keys live. Git add, commit, stash, and diff run inside the container where no credentials are needed. Both sides see the same files through a bind mount, so commits made in the container appear in `git log` on the Mac instantly.
+
 ## Security Model
 
-**Threat**: Malicious npm packages executing arbitrary code during install/test/build.
-
-**Mitigation**: The machine that executes untrusted JavaScript does not have access to developer credentials.
+The core principle: the machine that executes untrusted third-party JavaScript must not be the machine that holds valuable developer credentials.
 
 ### What's Protected
 
 | Credential | Location | Container Access |
 |-----------|----------|-----------------|
-| SSH keys | Mac `~/.ssh/` | ❌ None |
-| GCP credentials | Mac `~/.config/gcloud/` | ❌ None |
-| Terraform state | Mac project dir | ❌ Not mounted separately |
-| Git push capability | Mac SSH agent | ❌ Not forwarded |
-| Docker daemon | Mac Docker socket | ❌ Not mounted |
+| SSH keys | Mac `~/.ssh/` | None — not mounted, agent not forwarded |
+| GCP credentials | Mac `~/.config/gcloud/` | None — not mounted |
+| Terraform state | Mac project dir | Not mounted separately |
+| Git push capability | Mac SSH agent | Explicitly blocked via `SSH_AUTH_SOCK=""` |
+| Docker daemon | Mac Docker socket | Not mounted |
 
 ### What a Compromised Container Can Access
 
-| Resource | Access | Notes |
-|----------|--------|-------|
-| Source code | ✅ Read/write | Via bind mount (necessary for development) |
-| Outbound HTTPS | ✅ | Needed for npm registry, Claude API |
-| node_modules | ✅ | In volume, disposable |
+| Resource | Notes |
+|----------|-------|
+| Source code | Read/write via bind mount. Necessary for development. Review `git diff` before pushing. |
+| Outbound HTTPS | Required for npm registry. Enables source exfiltration — accepted risk. |
+| node_modules | In a disposable Docker volume. Destroy and recreate at any time. |
 
-### Additional Hardening (npm level)
+### npm-Level Hardening
 
-- `ignore-scripts=true` — install scripts disabled by default (npm 12 allowScripts)
-- `min-release-age=21` — refuse packages published less than 21 days ago
-- `audit=true` — automatic vulnerability checks on install
+The container image sets three npm defaults that protect every project opened inside it, even if that project has no security configuration of its own:
+
+- `ignore-scripts=true` — npm 12 disables install scripts by default. Each project opts in to specific packages via an `allowScripts` field in package.json, making the decision explicit and reviewable in pull requests.
+- `min-release-age=21` — refuses any package version published less than 21 days ago. Most malicious packages are detected and removed within days of publication; this quarantine period lets the community catch them first.
+- `audit=true` — runs `npm audit` on every install to surface known vulnerabilities.
 
 ### Accepted Risks
 
-- Source code is readable by a compromised process (necessary for development)
-- Outbound network allows exfiltration of source (egress filtering is a future enhancement)
-- Claude Code API key is inside the container (scoped, revocable)
+Source code is readable by a compromised process. This is unavoidable — you need the code to develop. Outbound network access allows exfiltration of that source; egress filtering is a future enhancement. The tradeoff: a compromised dependency can steal your code but cannot steal credentials that unlock other systems, push malicious commits, or access cloud infrastructure.
 
 ## Quick Start
 
 ```bash
-# 1. Verify prerequisites
+# 1. Verify prerequisites (Docker Desktop, VS Code, Dev Containers extension)
 ./scripts/setup.sh
 
 # 2. Open a project with .devcontainer/ in VS Code
 # 3. Click "Reopen in Container" when prompted
-# 4. Inside container:
+# 4. Inside the container:
 npm install
 npm test
 ```
@@ -82,42 +90,45 @@ npm test
 
 ```
 .devcontainer/
-├── Dockerfile              # Dev container image (Node 24, npm 12, terraform-ls)
-├── devcontainer.json       # VS Code container config
-└── docker-compose.yml      # Volume definitions
+├── Dockerfile              # Dev image: Node 24, npm 12, terraform-ls
+├── devcontainer.json       # VS Code container config, extensions, env
+└── docker-compose.yml      # Volumes, Datastore emulator sidecar
 
 scripts/
 ├── setup.sh               # Verify Mac prerequisites
 ├── rebuild.sh             # Destroy and rebuild container
 └── verify-isolation.sh    # Confirm credential isolation (run inside container)
 
-docs/runbooks/
-├── initial-setup.md       # First-time setup
-├── daily-workflow.md      # Everyday usage
-├── new-project-onboarding.md  # Adding the template to a new repo
-├── compromise-response.md # What to do if compromised
-├── terraform-workflow.md  # Terraform alongside container dev
-└── troubleshooting.md     # Common issues
+docs/
+├── concept/
+│   └── secure-remote-dev-environment.md   # Threat model and design thinking
+└── runbooks/
+    ├── initial-setup.md               # First-time setup
+    ├── daily-workflow.md              # Everyday usage
+    ├── new-project-onboarding.md      # Adding the template to a new repo
+    ├── compromise-response.md         # What to do if compromised
+    ├── terraform-workflow.md          # Terraform alongside container dev
+    └── troubleshooting.md             # Common issues
+
+openspec/                              # Design decisions, specs, and rationale
 ```
 
 ## Using the Template in Other Repos
 
-This repository provides the canonical Dev Container configuration. To use it in another Node.js project:
-
-**Simplest approach** — copy the `.devcontainer/` directory:
+This repository provides the canonical Dev Container configuration. To use it in another Node.js project, copy the `.devcontainer/` directory:
 
 ```bash
-cp -r ~/projects/developer-environment/.devcontainer ~/projects/my-project/
+cp -r path/to/developer-environment/.devcontainer path/to/my-project/
 ```
 
-**For ongoing sync** — symlink (single machine only):
+For ongoing sync on a single machine, symlink instead:
 
 ```bash
-cd ~/projects/my-project
-ln -s ~/projects/developer-environment/.devcontainer .devcontainer
+cd path/to/my-project
+ln -s path/to/developer-environment/.devcontainer .devcontainer
 ```
 
-See [New Project Onboarding](docs/runbooks/new-project-onboarding.md) for all options.
+See [New Project Onboarding](docs/runbooks/new-project-onboarding.md) for all options including git submodules.
 
 ## Runbooks
 
@@ -129,3 +140,23 @@ See [New Project Onboarding](docs/runbooks/new-project-onboarding.md) for all op
 | Suspected compromise | [compromise-response.md](docs/runbooks/compromise-response.md) |
 | Terraform operations | [terraform-workflow.md](docs/runbooks/terraform-workflow.md) |
 | Something's broken | [troubleshooting.md](docs/runbooks/troubleshooting.md) |
+
+## Alternatives
+
+- [LavaMoat](https://github.com/LavaMoat/LavaMoat) — runtime sandboxing of individual npm modules via SES compartments
+- [Socket](https://socket.dev/) — detects malicious packages by analyzing behavior before installation
+- [DevPod](https://github.com/loft-sh/devpod) — open-source dev environment management across any provider
+- [Trail of Bits claude-code-devcontainer](https://github.com/trailofbits/claude-code-devcontainer) — filesystem isolation for AI coding agents
+- [npm 12 allowScripts](https://docs.npmjs.com/cli/v12/commands/npm-approve-scripts) — built-in install script allow-listing (used in this project)
+
+## Design
+
+The [threat model](docs/concept/secure-remote-dev-environment.md) explains the reasoning behind this architecture in detail: what attacks it mitigates, what attack paths remain, and why specific tradeoffs were made. The [openspec/](openspec/) directory contains the structured design process — proposal, capability specs, technical design, and implementation tasks — that produced this repository.
+
+## Disclaimer
+
+I am not a security professional. This project represents a best-effort approach to reducing npm supply-chain attack surface based on publicly available information. It has not been audited. Review the [threat model](docs/concept/secure-remote-dev-environment.md) and accepted risks before relying on it.
+
+## License
+
+[MIT](LICENSE)
