@@ -83,6 +83,25 @@ brew uninstall node
 
 Node.js runs inside the container — you don't need it on the Mac.
 
+**If Node.js must stay** (e.g., required by tools like `openspec`), add this guard to `~/.zshrc` to prevent accidental `npm install` on the Mac:
+
+```bash
+npm() {
+  case "$1" in
+    install|ci|test|run|start|exec)
+      echo "⚠️  Blocked: 'npm $1' should run inside the dev container, not on Mac."
+      echo "   Open the project in VS Code → Reopen in Container → use the container terminal."
+      return 1
+      ;;
+    *)
+      command npm "$@"
+      ;;
+  esac
+}
+```
+
+This allows passive npm commands (`npm --version`, `npm list`) but blocks commands that download and execute third-party code.
+
 ### 9. First Container Launch
 
 Open a Node.js project that has `.devcontainer/` configuration:
