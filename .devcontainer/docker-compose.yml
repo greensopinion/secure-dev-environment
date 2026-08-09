@@ -11,7 +11,21 @@ services:
       - node_modules:/workspace/node_modules
     # SECURITY: No additional mounts, no Docker socket, no SSH agent
     # The container cannot access the host filesystem beyond /workspace
+    environment:
+      # Point tests at the Datastore emulator (runs on localhost via shared network)
+      - DATASTORE_EMULATOR_HOST=localhost:8081
+      - DATASTORE_PROJECT_ID=test-project
     command: sleep infinity
+
+  datastore-emulator:
+    image: google/cloud-sdk:emulators
+    # Share the dev container's network — emulator appears on localhost:8081
+    network_mode: service:dev
+    command: >
+      gcloud emulators datastore start
+      --host-port=0.0.0.0:8081
+      --project=test-project
+      --no-store-on-disk
 
 volumes:
   node_modules:
