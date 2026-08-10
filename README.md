@@ -50,13 +50,14 @@ The core principle: the machine that executes untrusted third-party JavaScript m
 | Container config (.devcontainer/) | In workspace | Read-only — cannot weaken future security |
 | Docker daemon | Mac Docker socket | Not mounted |
 | Mac services | host.docker.internal | Overridden to 127.0.0.1 |
+| Cloud metadata (169.254.169.254) | Blocked by Docker Desktop |
 
 ### What a Compromised Container Can Access
 
 | Resource | Notes |
 |----------|-------|
 | Source code | Read/write via bind mount. Review `git diff` on Mac before committing. |
-| Outbound network | Unrestricted TCP/UDP to the public internet. Required for npm registry. Enables exfiltration. |
+| Outbound network | Unrestricted TCP/UDP to the public internet. LAN and host services are potentially reachable; no egress firewall is applied. |
 | node_modules | In a disposable Docker volume. |
 
 ### npm-Level Hardening
