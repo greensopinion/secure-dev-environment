@@ -45,6 +45,8 @@ The core principle: the machine that executes untrusted third-party JavaScript m
 |-----------|----------|-----------------|
 | SSH keys | Mac `~/.ssh/` | None — not mounted, agent not forwarded |
 | GCP credentials | Mac `~/.config/gcloud/` | None — not mounted |
+| AWS credentials | Mac `~/.aws/` | None — not mounted |
+| Terraform credentials | Mac `~/.terraform.d/` | None — not mounted |
 | Git push capability | Mac SSH agent | Explicitly blocked via `SSH_AUTH_SOCK=""` |
 | Git metadata (.git/) | In workspace | Read-only — cannot modify hooks, config, or refs |
 | Container config (.devcontainer/) | In workspace | Read-only — cannot weaken future security |
@@ -57,6 +59,7 @@ The core principle: the machine that executes untrusted third-party JavaScript m
 | Resource | Notes |
 |----------|-------|
 | Source code | Read/write via bind mount. Review `git diff` on Mac before committing. |
+| Terraform state (if local) | `terraform.tfstate` in the project directory is readable via bind mount. Use remote state backends to avoid this. |
 | Outbound network | Unrestricted TCP/UDP to the public internet. LAN and host services are potentially reachable; no egress firewall is applied. |
 | node_modules | In a disposable Docker volume. |
 
