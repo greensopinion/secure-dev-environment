@@ -22,7 +22,7 @@ The Mac runs VS Code and holds credentials. The container runs Node.js and holds
 │  │ SSH keys, GCP credentials                                      │  │
 │  └───────────┬────────────────────────────────────────────────────┘  │
 │              │ bind mount (project dir only, .git read-only)         │
-│              ▼                                                        │
+│              ▼                                                       │
 │  ┌────────────────────────────────────────────────────────────────┐  │
 │  │ Docker Container                                               │  │
 │  │ Node.js 24 + npm 12                                            │  │
