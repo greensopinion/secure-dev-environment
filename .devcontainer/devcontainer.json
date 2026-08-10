@@ -23,7 +23,8 @@
     }
   },
 
-  // Set git identity from host environment variables
+  // Set git identity for display in read-only git commands (log, blame)
+  // The container cannot commit (.git is read-only), but tools may read this config
   "postCreateCommand": "git config --global user.name \"${GIT_USER_NAME:-Developer}\" && git config --global user.email \"${GIT_USER_EMAIL:-dev@example.com}\"",
 
   // Only pass through non-credential environment variables

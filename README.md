@@ -29,6 +29,7 @@ The Mac runs VS Code and holds credentials. The container runs Node.js and holds
 │  │ Source code at /workspace (writable)                           │  │
 │  │ .git (read-only), .devcontainer (read-only)                    │  │
 │  │ node_modules in Docker volume                                  │  │
+│  │ Git read-only (status, diff, log)                              │  │
 │  │                                                                │  │
 │  │ NO SSH keys · NO GCP creds · NO Docker socket                  │  │
 │  └────────────────────────────────────────────────────────────────┘  │

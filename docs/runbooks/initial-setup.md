@@ -54,20 +54,18 @@ Then reload:
 source ~/.zshrc
 ```
 
-These get passed into the container for git commits.
+These get passed into the container so that `git log` and other read-only commands display the correct author when inspecting commits made on the Mac.
 
-### 6. Redirect Git Hooks to a Trusted Location
+### 6. Redirect Git Hooks to a Trusted Location (Defense-in-Depth)
 
-The container can write to `.git/hooks/` inside bind-mounted repositories. If a compromised dependency writes a malicious hook, Mac-side `git push` would execute it with full credential access.
-
-To close this path, point Mac-side Git hooks to a directory outside the repository:
+`.git` is mounted read-only inside the container, so container code cannot modify hooks or config. As an additional safeguard, point Mac-side Git hooks to a directory outside the repository:
 
 ```bash
 mkdir -p ~/.git-hooks
 git config --global core.hooksPath ~/.git-hooks
 ```
 
-This means Git on the Mac ignores `.git/hooks/` entirely and only runs hooks from `~/.git-hooks/`, which the container cannot write to (it's not bind-mounted). If you use legitimate hooks (commit-msg linters, pre-commit checks), place them in `~/.git-hooks/` instead.
+This means Git on the Mac only runs hooks from `~/.git-hooks/`, not from per-repository `.git/hooks/`. If you use legitimate hooks (commit-msg linters, pre-commit checks), place them in `~/.git-hooks/`.
 
 ### 6. Clone This Repository
 
