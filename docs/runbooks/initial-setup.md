@@ -77,7 +77,7 @@ git clone git@github.com:greensopinion/secure-dev-environment.git
 ### 8. Run the Setup Verification
 
 ```bash
-cd developer-environment
+cd secure-dev-environment
 ./scripts/setup.sh
 ```
 

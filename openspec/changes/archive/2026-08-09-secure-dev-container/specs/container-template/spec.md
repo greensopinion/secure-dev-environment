@@ -69,11 +69,11 @@ The system SHALL configure git user.name and user.email inside the container so 
 ---
 
 ### Requirement: Template is reusable across Node.js projects
-The system SHALL provide the Dev Container configuration as a shared template in the developer-environment repository that can be referenced by multiple Node.js project repositories.
+The system SHALL provide the Dev Container configuration as a shared template in the secure-dev-environment repository that can be referenced by multiple Node.js project repositories.
 
 #### Scenario: A new Node.js project uses the template
 - **WHEN** a developer sets up a new Node.js project for containerized development
-- **THEN** they can use the shared template from developer-environment without duplicating the Dockerfile or devcontainer.json
+- **THEN** they can use the shared template from secure-dev-environment without duplicating the Dockerfile or devcontainer.json
 
 #### Scenario: Template updates propagate to projects
 - **WHEN** the shared template is updated (e.g., Node version bump)

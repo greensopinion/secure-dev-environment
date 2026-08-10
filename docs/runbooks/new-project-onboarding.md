@@ -4,14 +4,14 @@ How to configure a new Node.js project repository to use the secure Dev Containe
 
 ## Overview
 
-Each Node.js project needs a `.devcontainer/` directory that references the shared template from the `developer-environment` repository. There are several mechanisms to achieve this.
+Each Node.js project needs a `.devcontainer/` directory that references the shared template from the `secure-dev-environment` repository. There are several mechanisms to achieve this.
 
 ## Option A: Copy Template (Simplest)
 
-Copy the `.devcontainer/` directory from developer-environment into your project:
+Copy the `.devcontainer/` directory from secure-dev-environment into your project:
 
 ```bash
-cp -r ~/projects/developer-environment/.devcontainer ~/projects/my-new-project/
+cp -r ~/projects/secure-dev-environment/.devcontainer ~/projects/my-new-project/
 ```
 
 Then customize if needed (e.g., add project-specific extensions).
@@ -23,7 +23,7 @@ Then customize if needed (e.g., add project-specific extensions).
 
 ```bash
 cd ~/projects/my-new-project
-ln -s ~/projects/developer-environment/.devcontainer .devcontainer
+ln -s ~/projects/secure-dev-environment/.devcontainer .devcontainer
 ```
 
 **Pros**: Always uses latest template. Zero maintenance.
@@ -33,7 +33,7 @@ ln -s ~/projects/developer-environment/.devcontainer .devcontainer
 
 ```bash
 cd ~/projects/my-new-project
-git submodule add git@github.com:<org>/developer-environment.git .dev-env
+git submodule add git@github.com:<org>/secure-dev-environment.git .dev-env
 # Then in .devcontainer/devcontainer.json, reference the submodule's Dockerfile
 ```
 
@@ -46,7 +46,7 @@ For a single developer, copy the template and periodically update:
 
 ```bash
 # When the template changes:
-cp -r ~/projects/developer-environment/.devcontainer ~/projects/my-project/
+cp -r ~/projects/secure-dev-environment/.devcontainer ~/projects/my-project/
 ```
 
 ## After Adding .devcontainer/
@@ -55,7 +55,7 @@ cp -r ~/projects/developer-environment/.devcontainer ~/projects/my-project/
 2. VS Code prompts "Reopen in Container" — do it
 3. Wait for the image to build (first time only)
 4. Run `npm install` inside the container
-5. Verify: `./scripts/verify-isolation.sh` (copy the script too, or run from developer-environment)
+5. Verify: `./scripts/verify-isolation.sh` (copy the script too, or run from secure-dev-environment)
 
 ## Project-Specific Customizations
 

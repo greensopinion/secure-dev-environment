@@ -2,7 +2,7 @@
 
 The developer works on multiple Node.js monorepos on a Mac that also holds SSH keys, GCP credentials, and Terraform state. npm supply-chain attacks mean any `npm install` could execute hostile code with access to those credentials. The goal is to isolate Node.js execution inside a local Docker container while preserving a near-native VS Code editing experience.
 
-The developer-environment repository serves as the single source of truth for all container configuration, automation scripts, and operational runbooks.
+The secure-dev-environment repository serves as the single source of truth for all container configuration, automation scripts, and operational runbooks.
 
 Current state: No containerization. Node.js runs directly on the Mac alongside all credentials.
 
@@ -72,7 +72,7 @@ node_modules_vol → /workspace/node_modules  (named volume)
 
 **Rationale**: Each container-side extension has access to the container filesystem and can execute commands. Minimizing the set reduces attack surface. Claude Code needs command execution (for running tests, reading code) — acceptable because it's bounded by the same container isolation. Terraform extension provides language server without needing the terraform binary or cloud credentials.
 
-### 5. Shared template in developer-environment repo
+### 5. Shared template in secure-dev-environment repo
 
 **Choice**: Store the canonical `.devcontainer/` configuration (Dockerfile, devcontainer.json) in this repository. Individual project repos reference it.
 
@@ -87,7 +87,7 @@ node_modules_vol → /workspace/node_modules  (named volume)
 ### 6. Repository structure
 
 ```
-developer-environment/
+secure-dev-environment/
 ├── .devcontainer/
 │   ├── Dockerfile              # Shared dev image
 │   ├── devcontainer.json       # Shared container config

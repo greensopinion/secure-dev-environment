@@ -10,7 +10,7 @@ npm supply-chain attacks can execute arbitrary code during `npm install`, `npm t
 - VS Code connects to the container via the Dev Containers extension. Only a minimal set of extensions runs inside: Jest, YAML, Claude Code, HashiCorp Terraform (syntax/language server only).
 - Terraform/gcloud remain on the Mac with their credentials. The container has no GCP credentials, no SSH keys, no agent forwarding, no Docker socket.
 - The container is disposable — rebuild from the `.devcontainer/` config at any time.
-- All configuration, templates, and SOPs (runbooks) live in this `developer-environment` repo as a single source of truth.
+- All configuration, templates, and SOPs (runbooks) live in this `secure-dev-environment` repo as a single source of truth.
 
 ## Capabilities
 
@@ -30,5 +30,5 @@ npm supply-chain attacks can execute arbitrary code during `npm install`, `npm t
 - **Docker Desktop**: Required on Mac. Resource allocation (CPU, memory) needs to be appropriate for Node.js builds.
 - **VS Code configuration**: Dev Containers extension required. Local extensions reduced to minimum. Per-project extensions declared in devcontainer.json.
 - **Terraform**: No change to Terraform workflow. Runs on Mac with local credentials as before. Language server in container for syntax support only.
-- **Repository structure**: This `developer-environment` repo gains `.devcontainer/` template, runbook docs, and automation scripts.
+- **Repository structure**: This `secure-dev-environment` repo gains `.devcontainer/` template, runbook docs, and automation scripts.
 - **Per-project repos**: Each Node.js repo will reference or copy the shared Dev Container template (mechanism TBD — symlink, copy, or VS Code workspace config).
