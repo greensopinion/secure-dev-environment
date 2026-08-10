@@ -8,6 +8,8 @@ npm supply-chain attacks compromise developer workstations by executing maliciou
 
 This repository provides a Docker-based development environment that isolates Node.js execution from developer credentials. If a dependency is compromised, it can read source code and reach the internet — but it cannot access SSH keys, cloud credentials, or the Docker daemon. The container is disposable. Destroy it, rebuild from the config, and continue working.
 
+A dedicated remote VM or GitHub Codespace provides stronger isolation than a local Docker container. This project makes a different tradeoff: keep development local with a normal VS Code + Docker workflow, while keeping npm and other project code away from host credentials, trusted Git metadata, and other high-value resources.
+
 ## How It Works
 
 The Mac runs VS Code and holds credentials. The container runs Node.js and holds nothing of value beyond source code.
@@ -106,11 +108,23 @@ npm test
 
 ## Alternatives
 
-- [LavaMoat](https://github.com/LavaMoat/LavaMoat) — runtime sandboxing of individual npm modules via SES compartments
-- [Socket](https://socket.dev/) — detects malicious packages by analyzing behavior before installation
-- [DevPod](https://github.com/loft-sh/devpod) — open-source dev environment management across any provider
-- [Trail of Bits claude-code-devcontainer](https://github.com/trailofbits/claude-code-devcontainer) — filesystem isolation for AI coding agents
-- [npm 12 allowScripts](https://docs.npmjs.com/cli/v12/commands/npm-approve-scripts) — built-in install script allow-listing (used in this project)
+This project targets developers who want a local VS Code + Docker workflow while isolating Node.js/npm execution from credentials on the host. Depending on your threat model, one of these approaches may fit better.
+
+[GitHub Codespaces](https://github.com/features/codespaces) and remote development VMs provide a stronger isolation boundary by moving the development environment off your workstation entirely. If you are comfortable developing remotely, this is preferable from an isolation perspective. The tradeoffs are reliance on remote infrastructure, connectivity, cost, and having source hosted remotely.
+
+[VS Code Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers) are the foundation this project builds on rather than replaces. A standard Dev Container provides environment isolation, but its security depends on what is mounted or forwarded into it. This repository adds an opinionated configuration intended specifically for running potentially malicious npm code: no host credentials or Docker socket, read-only Git and container metadata, npm supply-chain policies, and automated isolation checks.
+
+[DevPod](https://github.com/loft-sh/devpod) runs dev-container-based environments locally, on remote machines, or in cloud infrastructure. It is a good option for portable or remote development environments without being tied to GitHub Codespaces. The security properties depend on the provider and how the workspace is configured.
+
+A disposable VM running the entire development environment gives a cleaner isolation boundary than a local Docker container and may be preferable for higher-risk work. The tradeoff is additional resource usage and workflow complexity.
+
+[LavaMoat](https://github.com/LavaMoat/LavaMoat) takes a different approach by sandboxing JavaScript modules at runtime, restricting what individual dependencies can access. This complements container isolation rather than replacing it.
+
+[Socket](https://socket.dev/) analyzes packages for suspicious or malicious behavior before installation. Detection reduces the chance of installing compromised dependencies, while this project assumes detection may fail and focuses on limiting what malicious code can reach.
+
+[npm 12 allowScripts](https://docs.npmjs.com/cli/v12/commands/npm-approve-scripts) provides built-in control over dependency lifecycle scripts and is used as one of the defense-in-depth layers in this project. npm policy reduces exposure, but the container remains the security boundary if malicious JavaScript executes through another path.
+
+This project does not claim to provide stronger isolation than a properly configured remote VM. The goal is a different tradeoff: keep development local and familiar while reducing the credentials and trusted host state exposed to npm and other project code.
 
 ## Design
 
