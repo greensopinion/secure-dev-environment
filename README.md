@@ -6,7 +6,7 @@ npm supply-chain attacks compromise developer workstations by executing maliciou
 - [Axios compromise](https://www.microsoft.com/en-us/security/blog/2026/04/01/mitigating-the-axios-npm-supply-chain-compromise/) (March 2026) — attackers hijacked a maintainer's npm account and published backdoored versions that installed a cross-platform RAT. The malicious versions were live for 3 hours before detection.
 - [Red Hat npm scope poisoning](https://www.microsoft.com/en-us/security/blog/2026/06/02/preinstall-persistence-inside-red-hat-npm-miasma-credential-stealing-campaign/) (June 2026) — 32 packages under `@redhat-cloud-services` were modified to steal credentials from developer workstations and CI/CD runners.
 
-This repository provides a Docker-based development environment that isolates Node.js execution from developer credentials. If a dependency is compromised, it can read source code and reach the internet — but it cannot access SSH keys, GCP credentials, Terraform state, or the Docker daemon. The container is disposable. Destroy it, rebuild from the config, and continue working.
+This repository provides a Docker-based development environment that isolates Node.js execution from developer credentials. If a dependency is compromised, it can read source code and reach the internet — but it cannot access SSH keys, cloud credentials, or the Docker daemon. The container is disposable. Destroy it, rebuild from the config, and continue working.
 
 ## How It Works
 
