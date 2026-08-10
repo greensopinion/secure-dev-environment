@@ -43,13 +43,25 @@ RUN git config --global credential.helper "" && \
     git config --global core.askPass "" && \
     git config --global init.defaultBranch main
 
-# Configure npm supply-chain protections at image level
-# These apply to ALL projects opened in this container
+# Configure npm supply-chain protections at image level.
 #
+# Security-critical npm settings (min-release-age, strict-allow-scripts,
+# dangerously-allow-all-scripts) are enforced via npm_config_* environment
+# variables in docker-compose.yml.
 #
-# strict-npmrc=true prevents project-local .npmrc from overriding these settings.
+# npm configuration precedence is:
+# CLI > environment variables > project .npmrc > user .npmrc > global .npmrc.
+#
+# Therefore, a project-local .npmrc cannot silently weaken these settings.
+# Note: command-line flags passed directly to npm have even higher precedence
+# and can still override them.
+#
+# The ~/.npmrc below provides defaults and visibility (e.g., for `npm config list`).
+# strict-npmrc=true catches unknown/typo'd keys (hard error instead of warning).
+# audit=true is advisory-only so .npmrc is sufficient.
 RUN echo "min-release-age=21" > ~/.npmrc && \
     echo "audit=true" >> ~/.npmrc && \
-    echo "strict-npmrc=true" >> ~/.npmrc
+    echo "strict-npmrc=true" >> ~/.npmrc && \
+    echo "strict-allow-scripts=true" >> ~/.npmrc
 
 WORKDIR /workspace

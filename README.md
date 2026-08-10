@@ -17,27 +17,23 @@ The Mac runs VS Code and holds credentials. The container runs Node.js and holds
 │  Mac (trusted)                                                       │
 │  ┌────────────────────────────────────────────────────────────────┐  │
 │  │ VS Code (Dev Containers ext)                                   │  │
-│  │ Git (push/pull/clone)                                          │  │
+│  │ Git (all mutations + push/pull)                                │  │
 │  │ Terraform / gcloud                                             │  │
 │  │ SSH keys, GCP credentials                                      │  │
-│  │ NO Node.js, NO npm                                             │  │
 │  └───────────┬────────────────────────────────────────────────────┘  │
-│              │ bind mount (project dir only)                          │
+│              │ bind mount (project dir only, .git read-only)         │
 │              ▼                                                        │
 │  ┌────────────────────────────────────────────────────────────────┐  │
 │  │ Docker Container                                               │  │
 │  │ Node.js 24 + npm 12                                            │  │
-│  │ Source code at /workspace (from Mac)                           │  │
-│  │ node_modules in Docker volume (fast, isolated)                 │  │
-│  │ Git (staging/committing only — no push credentials)            │  │
-│  │ terraform-ls (syntax support, no CLI)                          │  │
+│  │ Source code at /workspace (writable)                           │  │
+│  │ .git (read-only), .devcontainer (read-only)                    │  │
+│  │ node_modules in Docker volume                                  │  │
 │  │                                                                │  │
 │  │ NO SSH keys · NO GCP creds · NO Docker socket                  │  │
 │  └────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
-
-Git push and pull run on the Mac where SSH keys live. Git add, commit, and other metadata-modifying operations also run on the Mac because `.git` is mounted read-only inside the container. Read-only Git commands like status, diff, and log work inside the container. Both sides see the same working tree through a bind mount.
 
 ## Security Model
 
@@ -49,53 +45,33 @@ The core principle: the machine that executes untrusted third-party JavaScript m
 |-----------|----------|-----------------|
 | SSH keys | Mac `~/.ssh/` | None — not mounted, agent not forwarded |
 | GCP credentials | Mac `~/.config/gcloud/` | None — not mounted |
-| Terraform state | Mac project dir | Not mounted separately |
 | Git push capability | Mac SSH agent | Explicitly blocked via `SSH_AUTH_SOCK=""` |
 | Git metadata (.git/) | In workspace | Read-only — cannot modify hooks, config, or refs |
 | Container config (.devcontainer/) | In workspace | Read-only — cannot weaken future security |
 | Docker daemon | Mac Docker socket | Not mounted |
-| Git hooks execution | Mac `~/.git-hooks/` | Defense-in-depth alongside read-only .git |
+| Mac services | host.docker.internal | Overridden to 127.0.0.1 |
 
 ### What a Compromised Container Can Access
 
 | Resource | Notes |
 |----------|-------|
-| Source code | Read/write via bind mount. Necessary for development. Review `git diff` before pushing. |
-| Outbound network | Unrestricted TCP/UDP to the public internet. Required for npm registry. Enables exfiltration of source code to arbitrary servers. |
-| DNS | Can resolve arbitrary domains. |
-| node_modules | In a disposable Docker volume. Destroy and recreate at any time. |
-
-### What a Compromised Container Cannot Reach
-
-| Resource | Mitigation |
-|----------|-----------|
-| Mac services via host.docker.internal | Overridden to 127.0.0.1 (points to container itself) |
-| Cloud metadata (169.254.169.254) | Blocked by Docker Desktop |
-| Host filesystem beyond /workspace | Not mounted |
-| LAN / private network | Docker bridge is isolated from Mac's LAN |
+| Source code | Read/write via bind mount. Review `git diff` on Mac before committing. |
+| Outbound network | Unrestricted TCP/UDP to the public internet. Required for npm registry. Enables exfiltration. |
+| node_modules | In a disposable Docker volume. |
 
 ### npm-Level Hardening
 
-The container image sets three npm defaults that protect every project opened inside it, even if that project has no security configuration of its own:
+The container enforces npm security settings via environment variables, which have higher precedence than any `.npmrc` file. A hostile repository cannot override them.
 
-- `ignore-scripts=true` — npm 12 disables install scripts by default. Each project opts in to specific packages via an `allowScripts` field in package.json, making the decision explicit and reviewable in pull requests.
-- `min-release-age=21` — refuses any package version published less than 21 days ago. Most malicious packages are detected and removed within days of publication; this quarantine period lets the community catch them first.
-- `audit=true` — runs `npm audit` on every install to surface known vulnerabilities.
+- **Install scripts off by default** — npm 12 disables dependency install scripts unless the project explicitly lists them in `allowScripts` in package.json.
+- `strict-allow-scripts=true` — `npm install` fails if any dependency has unreviewed install scripts, forcing explicit approval.
+- `min-release-age=21` — refuses any package version published less than 21 days ago.
+- `audit=true` — runs `npm audit` on every install.
 
 ### Accepted Risks
 
-- **Source code exfiltration**: A compromised process can read all source code and send it anywhere over the network. Review `git diff` on the Mac before committing to detect modifications.
-- **Unrestricted outbound network**: The container can make arbitrary TCP/UDP connections to the internet. Egress filtering (e.g., an allowlist proxy) would reduce this but is not implemented. This is a deliberate tradeoff — npm, curl, and other tools need general internet access.
-- **DNS exfiltration**: Data can be exfiltrated via DNS queries. Mitigating this would require a restricted DNS resolver.
-- **Working tree modification**: Container code can modify source files, Makefiles, scripts, and other working-tree content. The `.git` and `.devcontainer` directories are read-only, but other files the host may later execute (e.g., Terraform config, shell scripts) are writable. Review changes before running host-side tools against the working tree.
-
-### Container Hardening
-
-The container runs with reduced privileges:
-- `no-new-privileges` — prevents privilege escalation via setuid binaries
-- `cap_drop: ALL` with only CHOWN, SETUID, SETGID, DAC_OVERRIDE retained (minimum for Node.js development)
-- `host.docker.internal` overridden to 127.0.0.1 — blocks access to Mac services
-- Non-root user (`node`, UID 1000)
+- **Source code exfiltration**: A compromised process can read source and send it anywhere over the network. Egress filtering is not implemented — npm and other tools need general internet access.
+- **Working tree modification**: Container code can modify source files, Makefiles, scripts, and other working-tree content. `.git` and `.devcontainer` are read-only, but other files the host may later execute (e.g., Terraform config, shell scripts) remain writable. Review changes before running host-side tools.
 
 ## Quick Start
 
@@ -109,50 +85,6 @@ The container runs with reduced privileges:
 npm install
 npm test
 ```
-
-## Repository Contents
-
-```
-.devcontainer/
-├── Dockerfile              # Dev image: Node 24, npm 12, terraform-ls
-├── devcontainer.json       # VS Code container config, extensions, env
-└── docker-compose.yml      # Volumes, Datastore emulator sidecar
-
-scripts/
-├── setup.sh               # Verify Mac prerequisites
-├── rebuild.sh             # Destroy and rebuild container
-└── verify-isolation.sh    # Confirm credential isolation (run inside container)
-
-docs/
-├── concept/
-│   └── secure-remote-dev-environment.md   # Threat model and design thinking
-└── runbooks/
-    ├── initial-setup.md               # First-time setup
-    ├── daily-workflow.md              # Everyday usage
-    ├── new-project-onboarding.md      # Adding the template to a new repo
-    ├── compromise-response.md         # What to do if compromised
-    ├── terraform-workflow.md          # Terraform alongside container dev
-    └── troubleshooting.md             # Common issues
-
-openspec/                              # Design decisions, specs, and rationale
-```
-
-## Using the Template in Other Repos
-
-This repository provides the canonical Dev Container configuration. To use it in another Node.js project, copy the `.devcontainer/` directory:
-
-```bash
-cp -r path/to/developer-environment/.devcontainer path/to/my-project/
-```
-
-For ongoing sync on a single machine, symlink instead:
-
-```bash
-cd path/to/my-project
-ln -s path/to/developer-environment/.devcontainer .devcontainer
-```
-
-See [New Project Onboarding](docs/runbooks/new-project-onboarding.md) for all options including git submodules.
 
 ## Runbooks
 
@@ -175,7 +107,7 @@ See [New Project Onboarding](docs/runbooks/new-project-onboarding.md) for all op
 
 ## Design
 
-The [threat model](docs/concept/secure-remote-dev-environment.md) explains the reasoning behind this architecture in detail: what attacks it mitigates, what attack paths remain, and why specific tradeoffs were made. The [openspec/](openspec/) directory contains the structured design process — proposal, capability specs, technical design, and implementation tasks — that produced this repository.
+The [threat model](docs/concept/secure-remote-dev-environment.md) explains the reasoning behind this architecture: what attacks it mitigates, what attack paths remain, and why specific tradeoffs were made. The [openspec/](openspec/) directory contains the structured design process that produced this repository.
 
 ## Disclaimer
 
