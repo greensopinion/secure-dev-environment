@@ -152,6 +152,13 @@ if [ -d /workspace/.git ]; then
   fi
 fi
 
+# 13. Cloud metadata endpoint is not reachable
+if curl --connect-timeout 2 -s -o /dev/null http://169.254.169.254/ 2>/dev/null; then
+  check "Cloud metadata endpoint not reachable" "fail" "http://169.254.169.254/ returned a response"
+else
+  check "Cloud metadata endpoint not reachable" "pass"
+fi
+
 # Summary
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="

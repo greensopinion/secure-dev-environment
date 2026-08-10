@@ -67,14 +67,14 @@ git config --global core.hooksPath ~/.git-hooks
 
 This means Git on the Mac only runs hooks from `~/.git-hooks/`, not from per-repository `.git/hooks/`. If you use legitimate hooks (commit-msg linters, pre-commit checks), place them in `~/.git-hooks/`.
 
-### 6. Clone This Repository
+### 7. Clone This Repository
 
 ```bash
 cd ~/projects  # or wherever you keep repos
 git clone git@github.com:<org>/developer-environment.git
 ```
 
-### 7. Run the Setup Verification
+### 8. Run the Setup Verification
 
 ```bash
 cd developer-environment
@@ -83,7 +83,7 @@ cd developer-environment
 
 Fix any failures before proceeding.
 
-### 8. Remove Node.js from Mac (Recommended)
+### 9. Remove Node.js from Mac (Recommended)
 
 If Node.js is installed on your Mac, consider removing it to enforce the isolation boundary:
 
@@ -111,9 +111,9 @@ npm() {
 }
 ```
 
-This allows passive npm commands (`npm --version`, `npm list`) but blocks commands that download and execute third-party code.
+This allows common read-only npm commands such as npm --version and npm list, while blocking several common commands that install dependencies or execute project/package scripts. It is an accident-prevention guard, not a complete security boundary.
 
-### 9. First Container Launch
+### 10. First Container Launch
 
 Open a Node.js project that has `.devcontainer/` configuration:
 
@@ -126,7 +126,7 @@ Open a Node.js project that has `.devcontainer/` configuration:
 
 ## What NOT to Do
 
-- Do NOT install Node.js or npm on the Mac
+- Prefer no Node.js/npm on the Mac. If required by trusted host tools, never use the host installation for project dependencies, builds, tests, or scripts.
 - Do NOT mount `~/.ssh` or `~/.config` into containers
 - Do NOT forward SSH agent into containers
 - Do NOT set cloud credential environment variables in the container

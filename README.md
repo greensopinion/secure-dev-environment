@@ -53,7 +53,7 @@ The core principle: the machine that executes untrusted third-party JavaScript m
 | Container config (.devcontainer/) | In workspace | Read-only — cannot weaken future security |
 | Docker daemon | Mac Docker socket | Not mounted |
 | Mac services | host.docker.internal | Overridden to 127.0.0.1 |
-| Cloud metadata (169.254.169.254) | Blocked by Docker Desktop |
+| Cloud metadata (169.254.169.254) | Not expected to be reachable in Docker Desktop; not relied upon as a security boundary |
 
 ### What a Compromised Container Can Access
 
@@ -72,6 +72,8 @@ The container enforces npm security settings via environment variables, which ha
 - `strict-allow-scripts=true` — `npm install` fails if any dependency has unreviewed install scripts, forcing explicit approval.
 - `min-release-age=21` — refuses any package version published less than 21 days ago.
 - `audit=true` — runs `npm audit` on every install.
+
+npm hardening protects normal installs and prevents project configuration from silently weakening policy. A developer can still explicitly override npm policy with command-line flags; container isolation remains the final security boundary.
 
 ### Accepted Risks
 
