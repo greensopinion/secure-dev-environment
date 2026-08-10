@@ -71,7 +71,7 @@ This means Git on the Mac only runs hooks from `~/.git-hooks/`, not from per-rep
 
 ```bash
 cd ~/projects  # or wherever you keep repos
-git clone git@github.com:<org>/developer-environment.git
+git clone git@github.com:greensopinion/secure-dev-environment.git
 ```
 
 ### 8. Run the Setup Verification
